@@ -1,0 +1,132 @@
+#include <Wire.h>
+#include <ESP8266WiFi.h>
+#include "ThingSpeak.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+const int temp = A0;
+const int alc = 2;
+#define Buz  15
+#define ledr 14
+#define ledg 12
+#define fan 13
+
+const char* ssid = "vivo 1818";   // your network SSID (name)
+const char* password = "younus123"; // your network password
+
+WiFiClient  client;
+
+unsigned long myChannelNumber = 1535033;
+const char * myWriteAPIKey = "XQA97ZVFJMI2VBC1";
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(Buz, OUTPUT);
+  pinMode(ledr, OUTPUT);
+  pinMode(fan, OUTPUT);
+  pinMode(ledg, OUTPUT);
+  delay(200);
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;);
+  }
+  delay(1000);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.println("BIKER HELMET FOR SAFETY AND ALERT SYSTEM");
+  display.display();
+
+  WiFi.mode(WIFI_STA);
+  ThingSpeak.begin(client);
+  // Connect or reconnect to WiFi
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.print("Attempting to connect");
+    while (WiFi.status() != WL_CONNECTED) {
+      WiFi.begin(ssid, password);
+      delay(5000);
+    }
+  }
+  display.setCursor(0, 30);
+  display.println("WiFi connected..!");
+  Serial.print("WiFi connected..!");
+  display.print("Got IP:");
+  Serial.print("Got IP: ");
+  display.println(WiFi.localIP());
+  Serial.println(WiFi.localIP());
+  display.display();
+  delay(2000);
+
+  digitalWrite(Buz, LOW);
+  digitalWrite(ledr, LOW);
+  digitalWrite(fan, LOW);
+  digitalWrite(ledg, LOW);
+}
+
+void loop() {
+  float MEMs = analogRead(temp); 
+  display.clearDisplay();
+  display.setCursor(0, 10);
+  display.setTextColor(WHITE, BLACK);
+  display.print("MEMS :");
+  display.println(MEMs);
+  display.display();
+  ThingSpeak.setField(1, MEMs);
+  ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+  if (MEMs < 630)
+  {
+    display.setCursor(0, 30);
+    display.setTextColor(WHITE, BLACK);
+    display.println("MEMS is NORMAL");
+    display.display();
+    digitalWrite(Buz, LOW);
+    digitalWrite(ledr, LOW);
+    digitalWrite(fan, HIGH);
+    digitalWrite(ledg, HIGH);
+    delay(2000);
+  }
+  else if (MEMs > 630)
+  {
+    display.setCursor(0, 30);
+    display.setTextColor(WHITE, BLACK);
+    display.println("MEMS is Abnormal");
+    display.display();
+    digitalWrite(Buz, HIGH);
+    digitalWrite(ledr, HIGH);
+    digitalWrite(fan, LOW);
+    digitalWrite(ledg, LOW);
+    delay(2000);
+    digitalWrite(Buz, LOW);
+    digitalWrite(ledr, LOW);
+  }
+
+  int alcohol = digitalRead(alc);
+  display.setCursor(0, 40);
+  display.setTextColor(WHITE, BLACK);
+  display.print("ALCOHOL :");
+  display.println(alcohol);
+  display.display();
+  ThingSpeak.setField(2, alcohol);
+  ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+  if (alcohol > 480)
+  {
+    display.setCursor(0, 50);
+    display.setTextColor(WHITE, BLACK);
+    display.println("Alcohol is Detected");
+    display.display();
+    digitalWrite(Buz, HIGH);
+    digitalWrite(ledr, HIGH);
+    digitalWrite(fan, LOW);
+    digitalWrite(ledg, LOW);
+    delay(2000);
+    digitalWrite(Buz, LOW);
+    digitalWrite(ledr, LOW);
+  }
+}
